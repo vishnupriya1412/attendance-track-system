@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AttendTrack – Attendance Tracking App</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;900&display=swap');
+
+:root {
+  --bg:#0b0d17; --surface:#12151f; --card:#181c2a; --border:#222840;
+  --accent:#4f6ef7; --accent2:#7c3aed; --green:#22c55e; --red:#ef4444;
+  --amber:#f59e0b; --cyan:#06b6d4; --text:#e8eaf6; --muted:#6b7280;
+  --mono:'Space Mono',monospace; --sans:'Outfit',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(79,110,247,.03) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(79,110,247,.03) 1px,transparent 1px);
+  background-size:36px 36px;pointer-events:none;z-index:0;}
+
+.app{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:20px 14px;}
+
+/* ── HEADER ── */
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:10px;}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-icon{width:46px;height:46px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:24px;}
+.logo h1{font-size:1.25rem;font-weight:800;letter-spacing:-0.5px;}
+.logo p{font-size:.68rem;color:var(--muted);font-family:var(--mono);}
+.header-right{display:flex;align-items:center;gap:10px;}
+.live-badge{display:flex;align-items:center;gap:5px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--green);font-size:.68rem;font-family:var(--mono);padding:5px 11px;border-radius:20px;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.4)}}
+#clock{font-family:var(--mono);font-size:.82rem;color:var(--muted);}
+
+/* ── SECTION SELECTOR ── */
+.section-bar{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
+.sec-btn{padding:7px 14px;border-radius:9px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:.78rem;font-family:var(--mono);cursor:pointer;transition:all .2s;white-space:nowrap;}
+.sec-btn:hover{border-color:var(--accent);color:var(--text);}
+.sec-btn.active{background:rgba(79,110,247,.18);border-color:var(--accent);color:var(--accent);font-weight:700;}
+.login-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(11,13,23,.92);z-index:1000;padding:16px;}
+.login-card{width:min(420px,100%);background:rgba(14,18,30,.98);border:1px solid var(--border);border-radius:18px;padding:28px;box-shadow:0 30px 80px rgba(0,0,0,.35);}
+.login-card h2{margin-bottom:10px;font-size:1.4rem;}
+.login-card p{color:var(--muted);margin-bottom:20px;font-size:.92rem;}
+.login-card input,.login-card select{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-size:.95rem;margin-bottom:12px;outline:none;}
+.login-card button{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;padding:12px 14px;border-radius:12px;font-weight:700;cursor:pointer;}
+.login-feedback{color:var(--amber);font-size:.82rem;text-align:center;min-height:18px;margin-top:8px;}
+.logout-btn{background:transparent;border:1px solid rgba(255,255,255,.2);color:var(--text);padding:7px 11px;border-radius:10px;font-family:var(--mono);font-size:.75rem;cursor:pointer;}
+.logout-btn:hover{background:rgba(255,255,255,.06);}
+.user-badge{font-family:var(--mono);font-size:.75rem;color:var(--accent);padding:7px 12px;border:1px solid rgba(79,110,247,.35);border-radius:11px;background:rgba(79,110,247,.08);}
+button:disabled, .act-btn:disabled, .scan-btn:disabled{opacity:.45;cursor:not-allowed;}
+
+/* ── STATS ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:14px 16px;position:relative;overflow:hidden;}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.stat.total::before{background:var(--accent);}
+.stat.present::before{background:var(--green);}
+.stat.absent::before{background:var(--red);}
+.stat.rate::before{background:var(--amber);}
+.stat-label{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:var(--mono);margin-bottom:5px;}
+.stat-val{font-size:1.9rem;font-weight:900;line-height:1;}
+.stat.total .stat-val{color:var(--accent);}
+.stat.present .stat-val{color:var(--green);}
+.stat.absent .stat-val{color:var(--red);}
+.stat.rate .stat-val{color:var(--amber);}
+
+/* ── LAYOUT ── */
+.main-grid{display:grid;grid-template-columns:1fr 380px;gap:16px;}
+
+/* ── LEFT PANEL ── */
+.panel{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+.panel-hdr{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.panel-title{font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-family:var(--mono);}
+
+/* Scan */
+.scan-area{padding:14px 18px;border-bottom:1px solid var(--border);}
+.scan-row{display:flex;gap:8px;}
+.scan-input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 13px;color:var(--text);font-family:var(--mono);font-size:.88rem;outline:none;transition:border-color .2s;}
+.scan-input:focus{border-color:var(--accent);}
+.scan-input::placeholder{color:var(--muted);}
+.scan-btn{background:var(--accent);color:#fff;border:none;border-radius:9px;padding:9px 16px;font-family:var(--sans);font-weight:700;font-size:.82rem;cursor:pointer;transition:opacity .2s;}
+.scan-btn:hover{opacity:.85;}
+.scan-fb{margin-top:6px;font-size:.74rem;font-family:var(--mono);min-height:18px;}
+.scan-fb.ok{color:var(--green);}
+.scan-fb.err{color:var(--red);}
+.scan-fb.warn{color:var(--amber);}
+
+/* Period tabs */
+.period-tabs{display:flex;overflow-x:auto;border-bottom:1px solid var(--border);scrollbar-width:none;}
+.period-tabs::-webkit-scrollbar{display:none;}
+.ptab{padding:10px 16px;font-size:.76rem;font-family:var(--mono);white-space:nowrap;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);transition:all .2s;}
+.ptab:hover{color:var(--text);}
+.ptab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* Actions */
+.action-row{display:flex;gap:7px;padding:10px 18px;border-bottom:1px solid var(--border);}
+.act-btn{flex:1;padding:7px;border-radius:8px;border:1px solid;font-size:.74rem;font-family:var(--mono);cursor:pointer;transition:all .2s;background:transparent;}
+.act-btn.ap{border-color:rgba(34,197,94,.4);color:var(--green);}
+.act-btn.ap:hover{background:rgba(34,197,94,.1);}
+.act-btn.aa{border-color:rgba(239,68,68,.4);color:var(--red);}
+.act-btn.aa:hover{background:rgba(239,68,68,.1);}
+.act-btn.rst{border-color:var(--border);color:var(--muted);}
+.act-btn.rst:hover{background:rgba(255,255,255,.05);}
+.export-btn{padding:7px 13px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:.74rem;font-family:var(--mono);cursor:pointer;white-space:nowrap;}
+
+/* Search */
+.search-wrap{padding:10px 18px;border-bottom:1px solid var(--border);}
+.search-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-family:var(--sans);font-size:.84rem;outline:none;}
+.search-input:focus{border-color:var(--accent);}
+.search-input::placeholder{color:var(--muted);}
+
+/* Student list */
+.stu-list{overflow-y:auto;max-height:440px;}
+.stu-row{display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid rgba(34,40,64,.5);cursor:pointer;transition:background .15s;}
+.stu-row:hover{background:rgba(255,255,255,.025);}
+.avatar{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.82rem;flex-shrink:0;}
+.stu-info{flex:1;min-width:0;}
+.stu-name{font-weight:600;font-size:.86rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stu-reg{font-size:.68rem;font-family:var(--mono);color:var(--muted);}
+.status-pill{font-size:.66rem;font-family:var(--mono);padding:3px 9px;border-radius:6px;font-weight:700;flex-shrink:0;}
+.status-pill.P{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3);}
+.status-pill.A{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.3);}
+.status-pill.N{background:rgba(107,114,128,.08);color:var(--muted);border:1px solid rgba(107,114,128,.2);}
+.notify-icon{font-size:.9rem;cursor:pointer;padding:4px;border-radius:6px;transition:background .15s;flex-shrink:0;}
+.notify-icon:hover{background:rgba(255,255,255,.08);}
+
+/* ── RIGHT PANEL – NOTICE ── */
+.notice-panel{display:flex;flex-direction:column;gap:0;}
+.absent-list{overflow-y:auto;max-height:280px;padding:10px 12px;display:flex;flex-direction:column;gap:7px;}
+.absent-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:10px;}
+.absent-card .ac-info{flex:1;min-width:0;}
+.absent-card .ac-name{font-weight:600;font-size:.84rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.absent-card .ac-reg{font-size:.66rem;font-family:var(--mono);color:var(--muted);}
+.absent-card .ac-actions{display:flex;gap:5px;flex-shrink:0;}
+.icon-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.icon-btn.wa:hover{background:rgba(37,211,102,.15);border-color:rgba(37,211,102,.4);color:#25d366;}
+.icon-btn.em:hover{background:rgba(79,110,247,.15);border-color:var(--accent);color:var(--accent);}
+.icon-btn.cp:hover{background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.4);color:var(--amber);}
+
+/* Bulk notice */
+.bulk-notice{padding:14px 16px;border-top:1px solid var(--border);}
+.notice-template{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px 12px;color:var(--text);font-family:var(--sans);font-size:.82rem;resize:vertical;min-height:100px;outline:none;line-height:1.5;}
+.notice-template:focus{border-color:var(--accent);}
+.bulk-actions{display:flex;gap:7px;margin-top:8px;flex-wrap:wrap;}
+.bulk-btn{flex:1;padding:8px 10px;border-radius:9px;border:1px solid;font-size:.74rem;font-family:var(--mono);cursor:pointer;background:transparent;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;}
+.bulk-btn.bwa{border-color:rgba(37,211,102,.4);color:#25d366;}
+.bulk-btn.bwa:hover{background:rgba(37,211,102,.1);}
+.bulk-btn.bem{border-color:rgba(79,110,247,.4);color:var(--accent);}
+.bulk-btn.bem:hover{background:rgba(79,110,247,.1);}
+.bulk-btn.bcp{border-color:rgba(245,158,11,.4);color:var(--amber);}
+.bulk-btn.bcp:hover{background:rgba(245,158,11,.1);}
+
+/* Summary tab */
+.summ-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+.summ-table th{text-align:left;padding:9px 12px;font-size:.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-family:var(--mono);border-bottom:1px solid var(--border);}
+.summ-table td{padding:9px 12px;border-bottom:1px solid rgba(34,40,64,.5);}
+.summ-table tr:hover td{background:rgba(255,255,255,.012);}
+.bar-wrap{display:flex;align-items:center;gap:7px;}
+.mini-bar{height:5px;background:var(--surface);border-radius:3px;flex:1;overflow:hidden;}
+.mini-fill{height:100%;border-radius:3px;transition:width .4s;}
+.pct{font-size:.68rem;font-family:var(--mono);color:var(--muted);width:34px;text-align:right;}
+
+/* Tabs on right */
+.rtab-bar{display:flex;border-bottom:1px solid var(--border);}
+.rtab{flex:1;padding:12px;text-align:center;font-size:.74rem;font-family:var(--mono);cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);transition:all .2s;}
+.rtab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.rtab-content{padding:14px;}
+
+/* Toast */
+.toast{position:fixed;bottom:28px;right:28px;background:#1e2235;border:1px solid var(--border);border-radius:12px;padding:12px 18px;font-size:.82rem;font-family:var(--mono);color:var(--green);z-index:999;opacity:0;transform:translateY(12px);transition:all .3s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateY(0);}
+
+/* No absent */
+.empty-notice{padding:30px 20px;text-align:center;color:var(--muted);font-size:.82rem;}
+
+/* Responsive */
+@media(max-width:820px){.main-grid{grid-template-columns:1fr;}.stats-row{grid-template-columns:repeat(2,1fr);}}
+</style>
+</head>
+<body>
+<div id="login-screen" class="login-screen">
+  <div class="login-card">
+    <h2>AttendTrack Login</h2>
+    <p>Choose Staff or Management access to continue.</p>
+    <input id="login-user" placeholder="Username" autocomplete="username" />
+    <input id="login-pass" type="password" placeholder="Password" autocomplete="current-password" />
+    <select id="login-role">
+      <option value="Staff">Staff</option>
+      <option value="Management">Management</option>
+    </select>
+    <button onclick="login()">Log in</button>
+    <div class="login-feedback" id="login-feedback"></div>
+    <div style="margin-top:14px;font-size:.78rem;color:var(--muted);">Staff login allows marking attendance. Management login allows reviewing and exporting attendance.</div>
+  </div>
+</div>
+<div class="app">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🎓</div>
+    <div>
+      <h1>AttendTrack</h1>
+      <p>GLOBAL INSTITUTE OF ENGINEERING AND TECHNOLOGY</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <div id="clock"></div>
+    <div id="user-badge" class="user-badge">Not logged in</div>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+</header>
+
+<!-- SECTION SELECTOR -->
+<div class="section-bar" id="section-bar"></div>
+
+<!-- STATS -->
+<div class="stats-row">
+  <div class="stat total"><div class="stat-label">Total</div><div class="stat-val" id="s-total">0</div></div>
+  <div class="stat present"><div class="stat-label">Present</div><div class="stat-val" id="s-present">0</div></div>
+  <div class="stat absent"><div class="stat-label">Absent</div><div class="stat-val" id="s-absent">0</div></div>
+  <div class="stat rate"><div class="stat-label">Rate</div><div class="stat-val" id="s-rate">—</div></div>
+</div>
+
+<!-- MAIN GRID -->
+<div class="main-grid">
+
+  <!-- LEFT -->
+  <div class="panel">
+    <div class="panel-hdr">
+      <span class="panel-title" id="left-title">Attendance</span>
+      <button class="export-btn" onclick="exportCSV()">⬇ Export CSV</button>
+    </div>
+
+    <!-- Scan -->
+    <div class="scan-area">
+      <div class="scan-row">
+        <input class="scan-input" id="scan-input" placeholder="Scan / type Register No. or Name..." autocomplete="off"/>
+        <button class="scan-btn" onclick="handleScan()">✓ Mark</button>
+      </div>
+      <div class="scan-fb" id="scan-fb"></div>
+    </div>
+
+    <!-- Period tabs -->
+    <div class="period-tabs" id="period-tabs"></div>
+
+    <!-- Actions -->
+    <div class="action-row">
+      <button class="act-btn ap" onclick="markAll('P')">✓ All Present</button>
+      <button class="act-btn aa" onclick="markAll('A')">✗ All Absent</button>
+      <button class="act-btn rst" onclick="resetPeriod()">↺ Reset</button>
+    </div>
+
+    <!-- Search -->
+    <div class="search-wrap">
+      <input class="search-input" id="search-input" placeholder="🔍  Search name or register no..." oninput="renderStudentList()"/>
+    </div>
+
+    <!-- Student list -->
+    <div class="stu-list" id="stu-list"></div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="panel notice-panel">
+    <div class="panel-hdr"><span class="panel-title">📢 Absent Notice</span></div>
+    <div class="rtab-bar">
+      <div class="rtab active" onclick="switchRTab('absent',this)">Absent Students</div>
+      <div class="rtab" onclick="switchRTab('summary',this)">Period Summary</div>
+    </div>
+
+    <!-- Absent tab -->
+    <div id="rtab-absent">
+      <div class="absent-list" id="absent-list"></div>
+      <div class="bulk-notice">
+        <div style="font-size:.7rem;color:var(--muted);font-family:var(--mono);margin-bottom:7px;">NOTICE TEMPLATE (editable)</div>
+        <textarea class="notice-template" id="notice-tmpl">Dear Parent,
+
+This is to inform you that your ward {NAME} (Reg No: {REG}), of {SECTION}, was absent during {PERIOD} on {DATE}.
+
+Kindly ensure regular attendance.
+
+– Class Coordinator
+Dept. of IT & CSE</textarea>
+        <div class="bulk-actions">
+          <button class="bulk-btn bwa" onclick="bulkSend('wa')">📱 WhatsApp All</button>
+          <button class="bulk-btn bem" onclick="bulkSend('email')">✉ Email All</button>
+          <button class="bulk-btn bcp" onclick="bulkSend('copy')">📋 Copy All</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary tab -->
+    <div id="rtab-summary" style="display:none">
+      <div class="rtab-content">
+        <table class="summ-table">
+          <thead><tr><th>Period</th><th>Present</th><th>Absent</th><th>Rate</th></tr></thead>
+          <tbody id="summ-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────
+const SECTIONS_DATA = {"IV IT": [{"sl": 1, "reg": "510922205001", "name": "Aathif mohamed A"}, {"sl": 2, "reg": "510922205002", "name": "Adarsh dev S"}, {"sl": 3, "reg": "510922205003", "name": "Adithya S"}, {"sl": 4, "reg": "510922205004", "name": "Ajay G"}, {"sl": 5, "reg": "510922205005", "name": "Aman H"}, {"sl": 6, "reg": "510922205006", "name": "Anbudaiya balan R"}, {"sl": 7, "reg": "510922205007", "name": "Archana S"}, {"sl": 8, "reg": "510922205008", "name": "Aruna C"}, {"sl": 9, "reg": "510922205009", "name": "Balaji kumar thapa L"}, {"sl": 10, "reg": "510922205010", "name": "Balakrishnan C"}, {"sl": 11, "reg": "510922205011", "name": "Balasubramani L"}, {"sl": 12, "reg": "510922205012", "name": "Barath P"}, {"sl": 13, "reg": "510922205013", "name": "Deenaganesh S"}, {"sl": 14, "reg": "510922205014", "name": "Deepak V"}, {"sl": 15, "reg": "510922205015", "name": "Dhanendiran M"}, {"sl": 16, "reg": "510922205016", "name": "Dharmesh J"}, {"sl": 17, "reg": "510922205017", "name": "Dhasween kumar G"}, {"sl": 18, "reg": "510922205018", "name": "Dinesh M"}, {"sl": 19, "reg": "510922205019", "name": "Dinesh kumar V"}, {"sl": 20, "reg": "510922205020", "name": "Dravid S.R"}, {"sl": 21, "reg": "510922205021", "name": "Gokul B"}, {"sl": 22, "reg": "510922205022", "name": "Gowtham S"}, {"sl": 23, "reg": "510922205023", "name": "Hari babu N"}, {"sl": 24, "reg": "510922205024", "name": "Inba kumar R"}, {"sl": 25, "reg": "510922205025", "name": "Irfan ahmed B"}, {"sl": 26, "reg": "510922205026", "name": "Jaya surya R"}, {"sl": 27, "reg": "510922205027", "name": "Jeevitha S"}, {"sl": 28, "reg": "510922205028", "name": "Kaviya anjali U"}, {"sl": 29, "reg": "510922205029", "name": "Keerthivasan D"}, {"sl": 30, "reg": "510922205031", "name": "Madhan raj S"}, {"sl": 31, "reg": "510922205032", "name": "Mageshkumar T"}, {"sl": 32, "reg": "510922205033", "name": "Mahalakshmi S"}, {"sl": 33, "reg": "510922205034", "name": "Manikandan M"}, {"sl": 34, "reg": "510922205035", "name": "Manivannan S"}, {"sl": 35, "reg": "510922205036", "name": "Merisha M"}, {"sl": 36, "reg": "510922205037", "name": "Mohan babu J"}, {"sl": 37, "reg": "510922205038", "name": "Mohankumar M"}, {"sl": 38, "reg": "510922205039", "name": "Monika M"}, {"sl": 39, "reg": "510922205040", "name": "Mythili P"}, {"sl": 40, "reg": "510922205041", "name": "Nandhini D"}, {"sl": 41, "reg": "510922205042", "name": "Nevatha M"}, {"sl": 42, "reg": "510922205044", "name": "Pranesh S"}, {"sl": 43, "reg": "510922205045", "name": "Prathipkumar G"}, {"sl": 44, "reg": "510922205046", "name": "Priyadharshini I"}, {"sl": 45, "reg": "510922205047", "name": "Purushothaman D"}, {"sl": 46, "reg": "510922205050", "name": "Ramprasath V"}, {"sl": 47, "reg": "510922205051", "name": "Ramya C"}, {"sl": 48, "reg": "510922205052", "name": "Rasimeena M"}, {"sl": 49, "reg": "510922205053", "name": "Roshan R S"}, {"sl": 50, "reg": "510922205054", "name": "Sachin Y"}, {"sl": 51, "reg": "510922205055", "name": "Saikrishna S.N"}, {"sl": 52, "reg": "510922205056", "name": "Saisakthi S"}, {"sl": 53, "reg": "510922205057", "name": "Sakthi B"}, {"sl": 54, "reg": "510922205058", "name": "Sakthi vel M"}, {"sl": 55, "reg": "510922205059", "name": "Sanjana S"}, {"sl": 56, "reg": "510922205060", "name": "Sanjay raj S"}, {"sl": 57, "reg": "510922205061", "name": "Santhosh V"}, {"sl": 58, "reg": "510922205062", "name": "Saranraj M"}, {"sl": 59, "reg": "510922205063", "name": "Selva kumar A"}, {"sl": 60, "reg": "510922205064", "name": "Shalini D"}, {"sl": 61, "reg": "510922205065", "name": "Shalini R"}, {"sl": 62, "reg": "510922205066", "name": "Shanmuganathan N"}, {"sl": 63, "reg": "510922205067", "name": "Sharuk basha S"}, {"sl": 64, "reg": "510922205068", "name": "Shruthi K"}, {"sl": 65, "reg": "510922205069", "name": "Siddarth A R"}, {"sl": 66, "reg": "510922205070", "name": "Sridevi S"}, {"sl": 67, "reg": "510922205071", "name": "Srihari S.P"}, {"sl": 68, "reg": "510922205072", "name": "Srinath R"}, {"sl": 69, "reg": "510922205073", "name": "Suresh A"}, {"sl": 70, "reg": "510922205074", "name": "Syed ghouse S"}, {"sl": 71, "reg": "510922205075", "name": "Tamizharasi G"}, {"sl": 72, "reg": "510922205076", "name": "Tanishq aravind R"}, {"sl": 73, "reg": "510922205077", "name": "Tikkaram B"}, {"sl": 74, "reg": "510922205078", "name": "Ukesh A"}, {"sl": 75, "reg": "510922205079", "name": "Usharishi S"}, {"sl": 76, "reg": "510922205080", "name": "Venkatesan L"}, {"sl": 77, "reg": "510922205081", "name": "Yaswanth kumar V"}, {"sl": 78, "reg": "510922205082", "name": "Yokesh K"}, {"sl": 79, "reg": "510922205083", "name": "Yokesh S"}, {"sl": 80, "reg": "510922205084", "name": "Santhosh K"}, {"sl": 81, "reg": "510922205301", "name": "Gowtham S"}, {"sl": 82, "reg": "510922205302", "name": "Harish TS"}, {"sl": 83, "reg": "510922205303", "name": "Harish kumar T"}, {"sl": 84, "reg": "510922205304", "name": "Loganathan S"}, {"sl": 85, "reg": "510922205305", "name": "Raju prasath S"}, {"sl": 86, "reg": "510922205306", "name": "Sanjay P"}, {"sl": 87, "reg": "510922205307", "name": "Santhosh S"}, {"sl": 88, "reg": "510922205308", "name": "Sowmiya R"}, {"sl": 89, "reg": "510922205309", "name": "Thamayanthi A"}, {"sl": 90, "reg": "510922205501", "name": "Kamalesh "}, {"sl": 91, "reg": "510922205701", "name": "Manojkumar"}], "iii B": [{"sl": 1, "reg": "510923205001", "name": "AARTHY S"}, {"sl": 2, "reg": "510923205002", "name": "ABARNA R"}, {"sl": 3, "reg": "510923205003", "name": "ABHISHEK R"}, {"sl": 4, "reg": "510923205004", "name": "ARCHANA S"}, {"sl": 5, "reg": "510923205005", "name": "ARJUN B"}, {"sl": 6, "reg": "510923205006", "name": "ASHIL BASHA AK"}, {"sl": 7, "reg": "510923205008", "name": "BALAJI S"}, {"sl": 8, "reg": "510923205009", "name": "BALAKUMARAN S"}, {"sl": 9, "reg": "510923205010", "name": "BHAVASRI K"}, {"sl": 10, "reg": "510923205011", "name": "CHANDINI  E"}, {"sl": 11, "reg": "510923205012", "name": "DANALAKSHMI B"}, {"sl": 12, "reg": "510923205014", "name": "DIVYA V"}, {"sl": 13, "reg": "510923205015", "name": "DIVYA BHARATHI V"}, {"sl": 14, "reg": "510923205016", "name": "DRAVID R"}, {"sl": 15, "reg": "510923205017", "name": "ELANGO S"}, {"sl": 16, "reg": "510923205018", "name": "GANESH T"}, {"sl": 17, "reg": "510923205019", "name": "GAYATHRI S"}, {"sl": 18, "reg": "510923205020", "name": "GOKUL M"}, {"sl": 19, "reg": "510923205022", "name": "HARINI S"}, {"sl": 20, "reg": "510923205023", "name": "HARISH L"}, {"sl": 21, "reg": "510923205024", "name": "HASHINI J"}, {"sl": 22, "reg": "510923205025", "name": "HEMASREE E"}, {"sl": 23, "reg": "510923205026", "name": "HEMAVATHI V"}, {"sl": 24, "reg": "510923205027", "name": "JANANI A"}, {"sl": 25, "reg": "510923205028", "name": "JEEVANANDAM B"}, {"sl": 26, "reg": "510923205029", "name": "KALIDHASAN A"}, {"sl": 27, "reg": "510923205031", "name": "KARTHIKEYAN D"}, {"sl": 28, "reg": "510923205032", "name": "KATHIRAVAN S"}, {"sl": 29, "reg": "510923205033", "name": "KAUSHIK KRISHNA V"}, {"sl": 30, "reg": "510923205034", "name": "KAVIYA SHREE D"}, {"sl": 31, "reg": "510923205035", "name": "KAVYA N"}, {"sl": 32, "reg": "510923205036", "name": "KIRANNATH N"}, {"sl": 33, "reg": "510923205037", "name": "KIRUTHIKA P"}, {"sl": 34, "reg": "510923205038", "name": "KUMARAVEL P"}, {"sl": 35, "reg": "510923205039", "name": "KUSHAL G"}, {"sl": 36, "reg": "510923205040", "name": "LAKSHMIPATHY B"}, {"sl": 37, "reg": "510923205041", "name": "LOKESH G"}, {"sl": 38, "reg": "510923205042", "name": "MADHUBALA T"}, {"sl": 39, "reg": "510923205043", "name": "MAGESHWARI S"}, {"sl": 40, "reg": "510923205044", "name": "MANICKAVIJAY S"}, {"sl": 41, "reg": "510923205045", "name": "MANOJ K"}, {"sl": 42, "reg": "510923205046", "name": "MANOJ KUMAR B"}, {"sl": 43, "reg": "510923205047", "name": "MONIKA G"}, {"sl": 44, "reg": "510923205048", "name": "MONISHA G"}, {"sl": 45, "reg": "510923205049", "name": "NANDHAKUMAR A"}, {"sl": 46, "reg": "510923205050", "name": "NANDHINI  K"}, {"sl": 47, "reg": "510923205051", "name": "NAVEEN KUMAR E"}, {"sl": 48, "reg": "510923205053", "name": "NISHA V"}, {"sl": 49, "reg": "510923205054", "name": "PARTHASARATHI V"}, {"sl": 50, "reg": "510923205055", "name": "POOJA A V"}, {"sl": 51, "reg": "510923205056", "name": "POOJA M"}, {"sl": 52, "reg": "510923205057", "name": "POOJA SRI V"}, {"sl": 53, "reg": "510923205058", "name": "PRASANNA B"}, {"sl": 54, "reg": "510923205059", "name": "PRAVEEN V"}, {"sl": 55, "reg": "510923205060", "name": "PRAVEENKUMAR K"}], "IV CSE": [{"sl": 1, "reg": "510922104001", "name": "Abinaya T"}, {"sl": 2, "reg": "510922104003", "name": "Akshaya S"}, {"sl": 3, "reg": "510922104004", "name": "Ammu V"}, {"sl": 4, "reg": "510922104005", "name": "Arun kumar K"}, {"sl": 5, "reg": "510922104006", "name": "Aslee S"}, {"sl": 6, "reg": "510922104007", "name": "Bharath raj T"}, {"sl": 7, "reg": "510922104008", "name": "Chandru S"}, {"sl": 8, "reg": "510922104009", "name": "Chandru V"}, {"sl": 9, "reg": "510922104010", "name": "Deleepkumar M"}, {"sl": 10, "reg": "510922104011", "name": "Dhanush J"}, {"sl": 11, "reg": "510922104012", "name": "Dhanush R"}, {"sl": 12, "reg": "510922104013", "name": "Dharanidharan G"}, {"sl": 13, "reg": "510922104014", "name": "Elangovan M"}, {"sl": 14, "reg": "510922104015", "name": "Ganesh K"}, {"sl": 15, "reg": "510922104016", "name": "Ganesh kumar M"}, {"sl": 16, "reg": "510922104017", "name": "Gokul D"}, {"sl": 17, "reg": "510922104018", "name": "Harini K"}, {"sl": 18, "reg": "510922104019", "name": "Haritha K"}, {"sl": 19, "reg": "510922104020", "name": "Hemanathan Y"}, {"sl": 20, "reg": "510922104021", "name": "Indhumithra M"}, {"sl": 21, "reg": "510922104022", "name": "Jayasree B"}, {"sl": 22, "reg": "510922104023", "name": "Jeeva D"}, {"sl": 23, "reg": "510922104024", "name": "Kaliyamoorthy S"}, {"sl": 24, "reg": "510922104025", "name": "Karan N"}, {"sl": 25, "reg": "510922104026", "name": "Karim khan S"}, {"sl": 26, "reg": "510922104027", "name": "Kaviya dharshini V"}, {"sl": 27, "reg": "510922104028", "name": "Kaviyarasi S"}, {"sl": 28, "reg": "510922104029", "name": "Lakshmi R"}, {"sl": 29, "reg": "510922104030", "name": "Logeswaran C"}, {"sl": 30, "reg": "510922104031", "name": "Logith M"}, {"sl": 31, "reg": "510922104032", "name": "Lokesh B"}, {"sl": 32, "reg": "510922104033", "name": "Lokesh B"}, {"sl": 33, "reg": "510922104034", "name": "Mamatha sri S"}, {"sl": 34, "reg": "510922104036", "name": "Mohamed raiyan A"}, {"sl": 35, "reg": "510922104038", "name": "Muthu kutty G"}, {"sl": 36, "reg": "510922104039", "name": "Naveen kumar V"}, {"sl": 37, "reg": "510922104040", "name": "Niranjan G"}, {"sl": 38, "reg": "510922104041", "name": "Nishanth K"}, {"sl": 39, "reg": "510922104042", "name": "Nithiya shree P"}, {"sl": 40, "reg": "510922104043", "name": "Porcheziyan V"}, {"sl": 41, "reg": "510922104044", "name": "Prabakaran K"}, {"sl": 42, "reg": "510922104045", "name": "Praveenkumar S"}, {"sl": 43, "reg": "510922104046", "name": "Prem messe G"}, {"sl": 44, "reg": "510922104047", "name": "Priya P"}, {"sl": 45, "reg": "510922104048", "name": "Priyadarshini P"}, {"sl": 46, "reg": "510922104049", "name": "Raghul K"}, {"sl": 47, "reg": "510922104050", "name": "Ramachandiran S"}, {"sl": 48, "reg": "510922104051", "name": "Ranjith kumar V"}, {"sl": 49, "reg": "510922104052", "name": "Ravindran M"}, {"sl": 50, "reg": "510922104053", "name": "Rishikumar M"}, {"sl": 51, "reg": "510922104054", "name": "Royal justin J"}, {"sl": 52, "reg": "510922104055", "name": "Rushikeswar M"}, {"sl": 53, "reg": "510922104056", "name": "Sangeetha R"}, {"sl": 54, "reg": "510922104057", "name": "Santhiya sri J"}, {"sl": 55, "reg": "510922104058", "name": "Santhosh M"}, {"sl": 56, "reg": "510922104059", "name": "Santhoshi G"}, {"sl": 57, "reg": "510922104060", "name": "Saran A"}, {"sl": 58, "reg": "510922104061", "name": "Saran kumar R"}, {"sl": 59, "reg": "510922104062", "name": "Sarumathi L"}, {"sl": 60, "reg": "510922104063", "name": "Sathish kumar S"}, {"sl": 61, "reg": "510922104064", "name": "Senthil kumar V"}, {"sl": 62, "reg": "510922104065", "name": "Shayaqullah K"}, {"sl": 63, "reg": "510922104066", "name": "Shouban ahmed S"}, {"sl": 64, "reg": "510922104067", "name": "Sindhuja V"}, {"sl": 65, "reg": "510922104068", "name": "Sneha J"}, {"sl": 66, "reg": "510922104069", "name": "Sudharsan B"}, {"sl": 67, "reg": "510922104070", "name": "Surya R"}, {"sl": 68, "reg": "510922104071", "name": "Vanishree S"}, {"sl": 69, "reg": "510922104072", "name": "Varsha R"}, {"sl": 70, "reg": "510922104073", "name": "Vasanth kumar R"}, {"sl": 71, "reg": "510922104074", "name": "Vishal V"}, {"sl": 72, "reg": "510922104075", "name": "Wasiyah fathima T"}, {"sl": 73, "reg": "510922104076", "name": "Yuvaraj R"}, {"sl": 74, "reg": "510922104077", "name": "Yuvaraj S"}, {"sl": 75, "reg": "510922104301", "name": "Arun B"}, {"sl": 76, "reg": "510922104302", "name": "Ezhilarasan E"}, {"sl": 77, "reg": "510922104303", "name": "Hariprasad S"}, {"sl": 78, "reg": "510922104304", "name": "Hariprasath J"}, {"sl": 79, "reg": "510922104305", "name": "Harish babu M"}, {"sl": 80, "reg": "510922104306", "name": "Ragul P"}, {"sl": 81, "reg": "510922104307", "name": "Samiullah S"}, {"sl": 82, "reg": "510922104308", "name": "Sanjay S"}], "iii c": [{"sl": 1, "reg": "510923104060", "name": "RAJALAKSHMI S"}, {"sl": 2, "reg": "510923104061", "name": "RAMYA D"}, {"sl": 3, "reg": "510923104062", "name": "SANJAI K"}, {"sl": 4, "reg": "510923104063", "name": "SANJAI M"}, {"sl": 5, "reg": "510923104064", "name": "SANJAY V"}, {"sl": 6, "reg": "510923104065", "name": "SARASWATHI P"}, {"sl": 7, "reg": "510923104066", "name": "SARATHI K"}, {"sl": 8, "reg": "510923104067", "name": "SARAVANAN P"}, {"sl": 9, "reg": "510923104068", "name": "SATHISH KUMAR V"}, {"sl": 10, "reg": "510923104069", "name": "SELVAKUMARAN V"}, {"sl": 11, "reg": "510923104070", "name": "SIVAKUMAR M"}, {"sl": 12, "reg": "510923104071", "name": "SOMESHWARAN K"}, {"sl": 13, "reg": "510923104072", "name": "SUJITH B"}, {"sl": 14, "reg": "510923104073", "name": "SURYA BALA K.N"}, {"sl": 15, "reg": "510923104074", "name": "SWATHI A"}, {"sl": 16, "reg": "510923104075", "name": "SWEDHARSHAN R"}, {"sl": 17, "reg": "510923104076", "name": "TAMIL SELVAN S"}, {"sl": 18, "reg": "510923104078", "name": "THEERAN E"}, {"sl": 19, "reg": "510923104079", "name": "THILIPAN P"}, {"sl": 20, "reg": "510923104080", "name": "THIYAGA MOORTHY S"}, {"sl": 21, "reg": "510923104081", "name": "UMA MAGESHWARI J"}, {"sl": 22, "reg": "510923104082", "name": "VARSHA S"}, {"sl": 23, "reg": "510923104083", "name": "VIGNESH M"}, {"sl": 24, "reg": "510923104084", "name": "VIMALRAJ S"}, {"sl": 25, "reg": "510923104085", "name": "VISHAL K"}, {"sl": 26, "reg": "510923104086", "name": "VISHNU PRIYA V"}, {"sl": 27, "reg": "510923104087", "name": "YUVAN SHANKAR S"}, {"sl": 28, "reg": "510923104301", "name": "DHAYANITHI.M"}, {"sl": 29, "reg": "510923104701", "name": "YOKESH.K"}, {"sl": 30, "reg": "510923205061", "name": "PRITHIKA S"}, {"sl": 31, "reg": "510923205062", "name": "PRIYADHARSHINI V"}, {"sl": 32, "reg": "510923205063", "name": "RAJA SHRI S"}, {"sl": 33, "reg": "510923205064", "name": "REENA KASTHURI D"}, {"sl": 34, "reg": "510923205066", "name": "SANJAY BALAJI G"}, {"sl": 35, "reg": "510923205067", "name": "SANTHOSH M"}, {"sl": 36, "reg": "510923205070", "name": "SARUKESH R"}, {"sl": 37, "reg": "510923205071", "name": "SATHISH V"}, {"sl": 38, "reg": "510923205072", "name": "SENTHILNATHAN R"}, {"sl": 39, "reg": "510923205073", "name": "SHARUKESH J"}, {"sl": 40, "reg": "510923205074", "name": "SHARUKESH S"}, {"sl": 41, "reg": "510923205075", "name": "SRI SHAKTHI S"}, {"sl": 42, "reg": "510923205076", "name": "THAMIZHARASAN V"}, {"sl": 43, "reg": "510923205077", "name": "THARUN S"}, {"sl": 44, "reg": "510923205078", "name": "THARUN KUMAR P"}, {"sl": 45, "reg": "510923205079", "name": "THARUNKUMAR S"}, {"sl": 46, "reg": "510923205080", "name": "UDAYAKUMAR D"}, {"sl": 47, "reg": "510923205081", "name": "VANISHREE S"}, {"sl": 48, "reg": "510923205082", "name": "VIGNESH M"}, {"sl": 49, "reg": "510923205083", "name": "VIGNESHWAR R"}, {"sl": 50, "reg": "510923205084", "name": "VIJAYASREE G"}, {"sl": 51, "reg": "510923205085", "name": "YAMUNA B"}, {"sl": 52, "reg": "510923205086", "name": "YOGAPRIYA R"}, {"sl": 53, "reg": "510923205087", "name": "YOKESH G"}, {"sl": 54, "reg": "510923205088", "name": "YUVANRAJ K"}, {"sl": 55, "reg": "510923205302", "name": "NITEESH KUMAR"}, {"sl": 56, "reg": "510923205701", "name": "DEEPAK RAJ.R"}], "iii cse A": [{"sl": 1, "reg": "510923104001", "name": "AAKASH C.J"}, {"sl": 2, "reg": "510923104002", "name": "ABDUL LATHEEF S"}, {"sl": 3, "reg": "510923104003", "name": "ABHISHEK S"}, {"sl": 4, "reg": "510923104004", "name": "ANGEL H"}, {"sl": 5, "reg": "510923104005", "name": "ARAVIND V"}, {"sl": 6, "reg": "510923104007", "name": "ARUNKUMAR D"}, {"sl": 7, "reg": "510923104008", "name": "ASHWINKUMAR V"}, {"sl": 8, "reg": "510923104009", "name": "BALA R"}, {"sl": 9, "reg": "510923104010", "name": "BALUSANKAR S"}, {"sl": 10, "reg": "510923104011", "name": "BHARATHKUMAR V"}, {"sl": 11, "reg": "510923104012", "name": "CHANDRASEKAR S"}, {"sl": 12, "reg": "510923104013", "name": "CHINTHIYA E"}, {"sl": 13, "reg": "510923104014", "name": "DINESH KUMAR I"}, {"sl": 14, "reg": "510923104015", "name": "DIVYASRI S"}, {"sl": 15, "reg": "510923104016", "name": "DURAI MURUGAN R"}, {"sl": 16, "reg": "510923104017", "name": "GANGADHARAN V"}, {"sl": 17, "reg": "510923104018", "name": "GOKUL A"}, {"sl": 18, "reg": "510923104019", "name": "GOUTHAM G"}, {"sl": 19, "reg": "510923104020", "name": "GOWTHAM R"}, {"sl": 20, "reg": "510923104021", "name": "GUNASEELAN S"}, {"sl": 21, "reg": "510923104022", "name": "HABITHA K"}, {"sl": 22, "reg": "510923104023", "name": "HARINI K"}, {"sl": 23, "reg": "510923104026", "name": "ILAYAKUMAR D"}, {"sl": 24, "reg": "510923104027", "name": "JAAIDEV R"}, {"sl": 25, "reg": "510923104028", "name": "JANANI P"}, {"sl": 26, "reg": "510923104029", "name": "JAYALAKSHMI R"}, {"sl": 27, "reg": "510923104031", "name": "KAMALESH V"}, {"sl": 28, "reg": "510923104033", "name": "KARTHIKEYAN P"}, {"sl": 29, "reg": "510923104034", "name": "KATHIRAVAN K"}, {"sl": 30, "reg": "510923104035", "name": "KAVI SHANTH E S"}, {"sl": 31, "reg": "510923104036", "name": "KISHENKUMAR S"}, {"sl": 32, "reg": "510923104037", "name": "KISHORE A"}, {"sl": 33, "reg": "510923104038", "name": "KISHORE P"}, {"sl": 34, "reg": "510923104039", "name": "LATHIKA R"}, {"sl": 35, "reg": "510923104040", "name": "LITHISH S"}, {"sl": 36, "reg": "510923104041", "name": "MADHAN R"}, {"sl": 37, "reg": "510923104042", "name": "MADHESH P"}, {"sl": 38, "reg": "510923104043", "name": "MANOJ S"}, {"sl": 39, "reg": "510923104044", "name": "MOHAMMED MANSOOR ALI  R"}, {"sl": 40, "reg": "510923104045", "name": "MOHANRAJ K."}, {"sl": 41, "reg": "510923104046", "name": "MONIKA M.A"}, {"sl": 42, "reg": "510923104047", "name": "MONISH R"}, {"sl": 43, "reg": "510923104048", "name": "MONISHA E"}, {"sl": 44, "reg": "510923104049", "name": "MONISHKUMAR V"}, {"sl": 45, "reg": "510923104050", "name": "NAVEEN KUMAR L"}, {"sl": 46, "reg": "510923104051", "name": "PARTHIBAN C"}, {"sl": 47, "reg": "510923104052", "name": "POOVARASAN E"}, {"sl": 48, "reg": "510923104053", "name": "PORSELVAN R"}, {"sl": 49, "reg": "510923104054", "name": "PRAKASH SHRIDHARAN"}, {"sl": 50, "reg": "510923104055", "name": "PRAVEEN R"}, {"sl": 51, "reg": "510923104056", "name": "PREMKUMAR R"}, {"sl": 52, "reg": "510923104058", "name": "PUSHPARAJ M"}, {"sl": 53, "reg": "510923104059", "name": "RAGHUL V"}], "ii CSE": [{"sl": 1, "reg": "510924104001", "name": "ABISHEK S"}, {"sl": 2, "reg": "510924104002", "name": "AJAY KUMAR V"}, {"sl": 3, "reg": "510924104003", "name": "AKSHAYA S"}, {"sl": 4, "reg": "510924104004", "name": "AMARNATH D"}, {"sl": 5, "reg": "510924104005", "name": "ANBARASI S"}, {"sl": 6, "reg": "510924104006", "name": "ARI KRISHNA B"}, {"sl": 7, "reg": "510924104008", "name": "ARUNKUMAR J"}, {"sl": 8, "reg": "510924104009", "name": "ASIF S"}, {"sl": 9, "reg": "510924104010", "name": "ATHIYA TAHAREEN M"}, {"sl": 10, "reg": "510924104011", "name": "BOOBESH P"}, {"sl": 11, "reg": "510924104013", "name": "CHANDRU S"}, {"sl": 12, "reg": "510924104014", "name": "DARAN KUMAR N"}, {"sl": 13, "reg": "510924104015", "name": "DASHMITHA S"}, {"sl": 14, "reg": "510924104016", "name": "DEEPADHARSHINI B"}, {"sl": 15, "reg": "510924104017", "name": "DEEPAK P"}, {"sl": 16, "reg": "510924104018", "name": "DEEPAK S"}, {"sl": 17, "reg": "510924104019", "name": "DHANALAKSHMI V"}, {"sl": 18, "reg": "510924104020", "name": "DHIYA SHRI S P"}, {"sl": 19, "reg": "510924104021", "name": "DIKSHIT D"}, {"sl": 20, "reg": "510924104022", "name": "DINESH KUMAR M"}, {"sl": 21, "reg": "510924104023", "name": "DINESHKUMAR S"}, {"sl": 22, "reg": "510924104024", "name": "IRFAN R"}, {"sl": 23, "reg": "510924104025", "name": "ISHAMAA Z"}, {"sl": 24, "reg": "510924104026", "name": "JANARTHANAN P"}, {"sl": 25, "reg": "510924104027", "name": "JANAVI S"}, {"sl": 26, "reg": "510924104028", "name": "JAYASRI R"}, {"sl": 27, "reg": "510924104029", "name": "KAMALI K"}, {"sl": 28, "reg": "510924104030", "name": "KANISHKA J"}, {"sl": 29, "reg": "510924104032", "name": "KARTHI M"}, {"sl": 30, "reg": "510924104034", "name": "KEERTHANA B"}, {"sl": 31, "reg": "510924104035", "name": "KIRAN RAJ S"}, {"sl": 32, "reg": "510924104036", "name": "KISHORE S"}, {"sl": 33, "reg": "510924104037", "name": "LOGEETH KUMAR A"}, {"sl": 34, "reg": "510924104038", "name": "MAGESH P"}, {"sl": 35, "reg": "510924104039", "name": "MANORANJAN M"}, {"sl": 36, "reg": "510924104040", "name": "MOHAMMED ASHIM S"}, {"sl": 37, "reg": "510924104041", "name": "MOHAMMED IMTHIYAS I"}, {"sl": 38, "reg": "510924104042", "name": "MUKESH K"}, {"sl": 39, "reg": "510924104043", "name": "NAVEEN KUMAR C"}, {"sl": 40, "reg": "510924104044", "name": "NAVEEN KUMAR K K"}, {"sl": 41, "reg": "510924104046", "name": "NIHA FATHIMA A"}, {"sl": 42, "reg": "510924104047", "name": "NIVETHA S"}, {"sl": 43, "reg": "510924104048", "name": "POOGALENTHI T"}, {"sl": 44, "reg": "510924104049", "name": "POORMAL V S"}, {"sl": 45, "reg": "510924104050", "name": "PRABU E"}, {"sl": 46, "reg": "510924104051", "name": "PRASANNALAKSHMI D"}, {"sl": 47, "reg": "510924104053", "name": "PREETHIKA K"}, {"sl": 48, "reg": "510924104054", "name": "PRIYADHARSHINI J"}, {"sl": 49, "reg": "510924104055", "name": "PRIYADHARSHINI U"}, {"sl": 50, "reg": "510924104056", "name": "RAAJ KUMAR S"}, {"sl": 51, "reg": "510924104057", "name": "RAGHUL R"}, {"sl": 52, "reg": "510924104058", "name": "RAJAPANDY V"}, {"sl": 53, "reg": "510924104059", "name": "RATHIKA E"}, {"sl": 54, "reg": "510924104060", "name": "SADHANA N"}, {"sl": 55, "reg": "510924104061", "name": "SAKTHI GANESH S"}, {"sl": 56, "reg": "510924104062", "name": "SANJANA S"}, {"sl": 57, "reg": "510924104063", "name": "SANTHOSH J"}, {"sl": 58, "reg": "510924104064", "name": "SANTHOSH KUMAR B"}, {"sl": 59, "reg": "510924104065", "name": "SARANYA G"}, {"sl": 60, "reg": "510924104066", "name": "SATHISH RAJAN S"}, {"sl": 61, "reg": "510924104067", "name": "SHRI HARIMANOHARI M"}, {"sl": 62, "reg": "510924104068", "name": "SUDHARSAN R"}, {"sl": 63, "reg": "510924104069", "name": "SUJI G"}, {"sl": 64, "reg": "510924104072", "name": "THARUN KUMAR B"}, {"sl": 65, "reg": "510924104073", "name": "THIRUMALAI V"}, {"sl": 66, "reg": "510924104074", "name": "VIGNESH C"}, {"sl": 67, "reg": "510924104075", "name": "VISHVAA S"}, {"sl": 68, "reg": "510924104076", "name": "YAMINI S"}, {"sl": 69, "reg": "510924104077", "name": "YUVARAJ N"}, {"sl": 70, "reg": "510924104078", "name": "YUVASHANKAR S P"}, {"sl": 71, "reg": "510924104079", "name": "KANNAN N"}, {"sl": 72, "reg": "510924104301", "name": "PRASANNA KUMAR C"}, {"sl": 73, "reg": "510924104302", "name": "SANTHAKUMAR P"}, {"sl": 74, "reg": "510924104303", "name": "SARAVANAN G"}, {"sl": 75, "reg": "510924104305", "name": "THARUN THEYVAN S"}], "ii IT": [{"sl": 1, "reg": "510924205001", "name": "ABINAYA  V"}, {"sl": 2, "reg": "510924205002", "name": "ARTHI V"}, {"sl": 3, "reg": "510924205003", "name": "BHARATHRAJ   D  G"}, {"sl": 4, "reg": "510924205004", "name": "BHASKAR  K"}, {"sl": 5, "reg": "510924205005", "name": "DEEPAK P"}, {"sl": 6, "reg": "510924205006", "name": "DEEPAK  R"}, {"sl": 7, "reg": "510924205007", "name": "DEEPESH  G"}, {"sl": 8, "reg": "510924205008", "name": "DHASHNANA  MOORTHY  K"}, {"sl": 9, "reg": "510924205011", "name": "DIVYA PRAKASH S"}, {"sl": 10, "reg": "510924205012", "name": "DWIJESH NIKILAN  S "}, {"sl": 11, "reg": "510924205013", "name": "GOKUL D"}, {"sl": 12, "reg": "510924205014", "name": "GOKUL M"}, {"sl": 13, "reg": "510924205016", "name": "GOKUL RAJ  S"}, {"sl": 14, "reg": "510924205017", "name": "GOPIKA  D"}, {"sl": 15, "reg": "510924205018", "name": "HARINI P"}, {"sl": 16, "reg": "510924205019", "name": "HARINI S"}, {"sl": 17, "reg": "510924205020", "name": "HARISHKUMAR M"}, {"sl": 18, "reg": "510924205021", "name": "HEMAPRIYA  D"}, {"sl": 19, "reg": "510924205022", "name": "HEMKUMAR  M"}, {"sl": 20, "reg": "510924205023", "name": "IMRAN BASHA  B"}, {"sl": 21, "reg": "510924205024", "name": "INDU P"}, {"sl": 22, "reg": "510924205025", "name": "INDUJA  P"}, {"sl": 23, "reg": "510924205026", "name": "JAYA PRAVEEN R"}, {"sl": 24, "reg": "510924205027", "name": "JOTHEESWARAN G"}, {"sl": 25, "reg": "510924205028", "name": "KATHIRVEL P P"}, {"sl": 26, "reg": "510924205029", "name": "KAVIYA P"}, {"sl": 27, "reg": "510924205030", "name": "KEERTHIGA R"}, {"sl": 28, "reg": "510924205031", "name": "KISHORE KUMAR S"}, {"sl": 29, "reg": "510924205032", "name": "KISHORE KUMAR V"}, {"sl": 30, "reg": "510924205033", "name": "KRISHNAMOORTHI  R"}, {"sl": 31, "reg": "510924205035", "name": "LINGESH  K"}, {"sl": 32, "reg": "510924205036", "name": "LOGESHWARI  T"}, {"sl": 33, "reg": "510924205037", "name": "LOKESH KUMAR  G"}, {"sl": 34, "reg": "510924205038", "name": "MAGESH D"}, {"sl": 35, "reg": "510924205039", "name": "MARAN  V"}, {"sl": 36, "reg": "510924205040", "name": "MEENA M"}, {"sl": 37, "reg": "510924205041", "name": "MEGAVARSHINI P"}, {"sl": 38, "reg": "510924205042", "name": "MOHAMMED ABBAS  M"}, {"sl": 39, "reg": "510924205043", "name": "MOHAMMED ABUBAKKAR SITHIK J"}, {"sl": 40, "reg": "510924205044", "name": "NAFILA   A"}, {"sl": 41, "reg": "510924205045", "name": "NANDHAKUMARI   A"}, {"sl": 42, "reg": "510924205046", "name": "NAVEEN KUMAR R"}, {"sl": 43, "reg": "510924205047", "name": "NAVEEN KUMAR   T"}, {"sl": 44, "reg": "510924205048", "name": "NIRANJAN KUMAR V"}, {"sl": 45, "reg": "510924205049", "name": "PATTABI RAMAN   S"}, {"sl": 46, "reg": "510924205050", "name": "PERARASU P. A"}, {"sl": 47, "reg": "510924205051", "name": "PRAVINKUMAR S"}, {"sl": 48, "reg": "510924205052", "name": "PREETHI S"}, {"sl": 49, "reg": "510924205053", "name": "PUGAZHENTHI   B"}, {"sl": 50, "reg": "510924205055", "name": "PURUSHOTHAMAN   P"}, {"sl": 51, "reg": "510924205056", "name": "RAGULPRASATH M"}, {"sl": 52, "reg": "510924205057", "name": "ROHITH KUMAR  V  B"}, {"sl": 53, "reg": "510924205059", "name": "SANTHOSHKUMAR M"}, {"sl": 54, "reg": "510924205060", "name": "SARANKUMAR R"}, {"sl": 55, "reg": "510924205062", "name": "SHOFIA Y"}, {"sl": 56, "reg": "510924205063", "name": "SIJIN RAJ   S "}, {"sl": 57, "reg": "510924205064", "name": "SOWMIYA A"}, {"sl": 58, "reg": "510924205065", "name": "SUMALATHA V"}, {"sl": 59, "reg": "510924205066", "name": "THIRISHA   V"}, {"sl": 60, "reg": "510924205067", "name": "VARSHINI   S"}, {"sl": 61, "reg": "510924205068", "name": "VARUN Y"}, {"sl": 62, "reg": "510924205069", "name": "VIGNESHVARAN K"}, {"sl": 63, "reg": "510924205070", "name": "YASMEEN M"}, {"sl": 64, "reg": "510924205071", "name": "YUGESH VARMA   M"}, {"sl": 65, "reg": "510924205301", "name": " PRAVEEN KUMAR J"}, {"sl": 66, "reg": "510924205302", "name": "SANTHOSH D"}], "II AIML": [{"sl": 4, "reg": "510924148001", "name": "ARFATH E"}, {"sl": 5, "reg": "510924148003", "name": "GAYATHRI N"}, {"sl": 6, "reg": "510924148006", "name": "JAGADEESH N"}, {"sl": 7, "reg": "510924148007", "name": "JEEVA K"}, {"sl": 8, "reg": "510924148008", "name": "JEEVANANTHAM S"}, {"sl": 9, "reg": "510924148009", "name": "KAYUKA P.B."}, {"sl": 10, "reg": "510924148010", "name": "KUMARESAN R"}, {"sl": 11, "reg": "510924148011", "name": "LOKESH K"}, {"sl": 12, "reg": "510924148012", "name": "MATHUMITHA M"}, {"sl": 13, "reg": "510924148013", "name": "MOHAMMED MUSHRAF A"}, {"sl": 14, "reg": "510924148014", "name": "NIVETHA D"}, {"sl": 15, "reg": "510924148015", "name": "PRIYADHARSHINI E"}, {"sl": 16, "reg": "510924148016", "name": "RAJKUMAR L"}, {"sl": 17, "reg": "510924148017", "name": "RAMYA A"}, {"sl": 18, "reg": "510924148018", "name": "RAYAAN F"}, {"sl": 19, "reg": "510924148019", "name": "SANTHOSH M"}, {"sl": 20, "reg": "510924148020", "name": "SARGESH N"}, {"sl": 21, "reg": "510924148021", "name": "SATHIYA NARAYANAN S"}]};
+
+const PERIODS = [
+  {id:'p1',name:'Period 1',time:'08:00–08:50',sub:'Period 1'},
+  {id:'p2',name:'Period 2',time:'09:00–09:50',sub:'Period 2'},
+  {id:'p3',name:'Period 3',time:'10:00–10:50',sub:'Period 3'},
+  {id:'p4',name:'Period 4',time:'11:00–11:50',sub:'Period 4'},
+  {id:'p5',name:'Period 5',time:'12:00–12:50',sub:'Period 5'},
+  {id:'p6',name:'Period 6',time:'01:30–02:20',sub:'Period 6'},
+  {id:'p7',name:'Period 7',time:'02:30–03:20',sub:'Period 7'},
+];
+const COLORS=['#4f6ef7','#7c3aed','#0891b2','#059669','#d97706','#dc2626','#0284c7','#16a34a'];
+const SECTIONS = Object.keys(SECTIONS_DATA);
+const USERS = {
+  staff: { password: 'staff@123', role: 'Staff' },
+  management: { password: 'manage@123', role: 'Management' }
+};
+let currentUser = null;
+
+// State
+let activeSection = SECTIONS[0];
+let activePeriod = 'p1';
+let activeRTab = 'absent';
+// attendance[section][period][reg] = 'P'|'A'
+const attendance = {};
+SECTIONS.forEach(s => { attendance[s]={}; PERIODS.forEach(p=>{attendance[s][p.id]={};});});
+
+// ─── CLOCK ───────────────────────────────────────────────
+function updateClock(){
+  document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(updateClock,1000); updateClock();
+
+function canEdit(){
+  return currentUser?.role==='Staff';
+}
+function updateAccess(){
+  const badge=document.getElementById('user-badge');
+  const loginScreen=document.getElementById('login-screen');
+  badge.textContent=currentUser?`${currentUser.role} mode`:'Not logged in';
+  if(loginScreen){loginScreen.style.display=currentUser?'none':'flex';}
+  const disabled=!canEdit();
+  document.getElementById('scan-input').disabled=disabled;
+  document.querySelectorAll('.scan-btn, .act-btn').forEach(btn=>btn.disabled=disabled);
+  document.getElementById('scan-input').placeholder=disabled?'Staff login required to mark attendance':'Scan / type Register No. or Name...';
+}
+function login(){
+  const user=document.getElementById('login-user').value.trim().toLowerCase();
+  const pass=document.getElementById('login-pass').value;
+  const role=document.getElementById('login-role').value;
+  const feedback=document.getElementById('login-feedback');
+  const entry=USERS[user];
+  if(!entry || entry.password!==pass || entry.role!==role){
+    feedback.textContent='Invalid username, password, or role.';
+    return;
+  }
+  currentUser={username:user,role:role};
+  feedback.textContent='';
+  updateAccess();
+  renderAll();
+  showToast(`Welcome ${role}`);
+}
+function logout(){
+  currentUser=null;
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+  document.getElementById('login-feedback').textContent='Logged out. Please sign in again.';
+  updateAccess();
+}
+
+// ─── TODAY DATE ──────────────────────────────────────────
+function todayStr(){return new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'});}
+
+// ─── INITIALS ────────────────────────────────────────────
+function initials(n){return n.trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();}
+
+// ─── NOTICE MESSAGE ──────────────────────────────────────
+function buildMsg(stu,period){
+  const tmpl=document.getElementById('notice-tmpl').value;
+  const p=PERIODS.find(x=>x.id===period);
+  return tmpl
+    .replace(/{NAME}/g,stu.name.trim())
+    .replace(/{REG}/g,stu.reg)
+    .replace(/{SECTION}/g,activeSection)
+    .replace(/{PERIOD}/g,p?`${p.name} (${p.time})`:'this period')
+    .replace(/{DATE}/g,todayStr());
+}
+
+// ─── SEND NOTICE ─────────────────────────────────────────
+function sendNotice(stu,type){
+  const msg=buildMsg(stu,activePeriod);
+  if(type==='wa'){
+    window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+  } else if(type==='email'){
+    window.open('mailto:?subject=Attendance Notice – '+stu.name.trim()+'&body='+encodeURIComponent(msg),'_blank');
+  } else if(type==='copy'){
+    navigator.clipboard.writeText(msg).then(()=>showToast('✓ Notice copied for '+stu.name.trim()));
+  }
+}
+
+// ─── BULK SEND ───────────────────────────────────────────
+function bulkSend(type){
+  const absent=absentStudents();
+  if(!absent.length){showToast('⚠ No absent students!');return;}
+  if(type==='copy'){
+    const all=absent.map(s=>buildMsg(s,activePeriod)).join('\n\n─────────────────\n\n');
+    navigator.clipboard.writeText(all).then(()=>showToast('✓ All '+absent.length+' notices copied!'));
+  } else if(type==='wa'){
+    absent.forEach((s,i)=>setTimeout(()=>window.open('https://wa.me/?text='+encodeURIComponent(buildMsg(s,activePeriod)),'_blank'),i*600));
+    showToast('📱 Opening WhatsApp for '+absent.length+' students…');
+  } else if(type==='email'){
+    const all=absent.map(s=>buildMsg(s,activePeriod)).join('\n\n─────────────────\n\n');
+    window.open('mailto:?subject=Absence Notice – '+activeSection+' – '+todayStr()+'&body='+encodeURIComponent(all),'_blank');
+  }
+}
+
+// ─── ABSENT LIST ─────────────────────────────────────────
+function absentStudents(){
+  return (SECTIONS_DATA[activeSection]||[]).filter(s=>attendance[activeSection][activePeriod][s.reg]==='A');
+}
+
+// ─── TOAST ───────────────────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ─── SECTION BAR ─────────────────────────────────────────
+function renderSectionBar(){
+  document.getElementById('section-bar').innerHTML=SECTIONS.map(s=>
+    `<button class="sec-btn ${s===activeSection?'active':''}" onclick="selectSection('${s}')">${s}</button>`
+  ).join('');
+}
+function selectSection(s){
+  activeSection=s;
+  document.getElementById('left-title').textContent=s+' — Attendance';
+  document.getElementById('search-input').value='';
+  renderAll();
+}
+
+// ─── PERIOD TABS ─────────────────────────────────────────
+function renderPeriodTabs(){
+  document.getElementById('period-tabs').innerHTML=PERIODS.map(p=>
+    `<div class="ptab ${p.id===activePeriod?'active':''}" onclick="selectPeriod('${p.id}')">${p.name}<br><span style="font-size:.6rem;opacity:.6">${p.time}</span></div>`
+  ).join('');
+}
+function selectPeriod(id){activePeriod=id;renderAll();}
+
+// ─── STUDENT LIST ─────────────────────────────────────────
+function renderStudentList(){
+  const q=document.getElementById('search-input').value.toLowerCase();
+  const students=(SECTIONS_DATA[activeSection]||[]).filter(s=>
+    s.name.toLowerCase().includes(q)||s.reg.includes(q));
+  document.getElementById('stu-list').innerHTML=students.map((s,i)=>{
+    const st=attendance[activeSection][activePeriod][s.reg]||null;
+    const c=COLORS[i%COLORS.length];
+    return `<div class="stu-row" onclick="toggleStu('${s.reg}')">
+      <div class="avatar" style="background:${c}22;color:${c}">${initials(s.name)}</div>
+      <div class="stu-info">
+        <div class="stu-name">${s.name.trim()}</div>
+        <div class="stu-reg">${s.reg}</div>
+      </div>
+      <div class="status-pill ${st||'N'}">${st==='P'?'PRESENT':st==='A'?'ABSENT':'—'}</div>
+      ${st==='A'?`<div class="notify-icon" title="Send notice" onclick="event.stopPropagation();openNoticeFor('${s.reg}')">🔔</div>`:'<div style="width:26px"></div>'}
+    </div>`;
+  }).join('');
+}
+
+function openNoticeFor(reg){
+  const stu=SECTIONS_DATA[activeSection].find(s=>s.reg===reg);
+  if(!stu)return;
+  // Switch to absent tab and scroll to student
+  switchRTab('absent',document.querySelector('.rtab'));
+  renderAbsentPanel();
+  showToast('📢 Notice ready for '+stu.name.trim());
+}
+
+// ─── TOGGLE STUDENT ──────────────────────────────────────
+function toggleStu(reg){
+  if(!canEdit()){showToast('⚠ Only staff can edit attendance'); return;}
+  const cur=attendance[activeSection][activePeriod][reg];
+  attendance[activeSection][activePeriod][reg]=cur==='P'?'A':'P';
+  renderAll();
+}
+
+// ─── SCAN ────────────────────────────────────────────────
+function handleScan(){
+  if(!canEdit()){showToast('⚠ Only staff can mark attendance'); return;}
+  const raw=document.getElementById('scan-input').value.trim();
+  const fb=document.getElementById('scan-fb');
+  if(!raw){fb.textContent='⚠ Enter Register No. or Name';fb.className='scan-fb warn';return;}
+  const students=SECTIONS_DATA[activeSection]||[];
+  const stu=students.find(s=>s.reg===raw||s.reg.toLowerCase()===raw.toLowerCase()||s.name.toLowerCase()===raw.toLowerCase()||s.name.toLowerCase().startsWith(raw.toLowerCase()));
+  if(!stu){fb.textContent=`✗ "${raw}" not found in ${activeSection}`;fb.className='scan-fb err';}
+  else if(attendance[activeSection][activePeriod][stu.reg]==='P'){
+    fb.textContent=`⚠ ${stu.name.trim()} already marked Present`;fb.className='scan-fb warn';
+  } else {
+    attendance[activeSection][activePeriod][stu.reg]='P';
+    fb.textContent=`✓ ${stu.name.trim()} marked Present`;fb.className='scan-fb ok';
+    renderAll();
+  }
+  document.getElementById('scan-input').value='';
+  setTimeout(()=>{fb.textContent='';fb.className='scan-fb';},3000);
+}
+document.getElementById('scan-input').addEventListener('keydown',e=>{if(e.key==='Enter')handleScan();});
+
+// ─── MARK ALL / RESET ────────────────────────────────────
+function markAll(st){
+  if(!canEdit()){showToast('⚠ Only staff can mark attendance'); return;}
+  (SECTIONS_DATA[activeSection]||[]).forEach(s=>{attendance[activeSection][activePeriod][s.reg]=st;});
+  renderAll();
+}
+function resetPeriod(){
+  if(!canEdit()){showToast('⚠ Only staff can reset attendance'); return;}
+  (SECTIONS_DATA[activeSection]||[]).forEach(s=>{delete attendance[activeSection][activePeriod][s.reg];});
+  renderAll();
+}
+
+// ─── STATS ───────────────────────────────────────────────
+function renderStats(){
+  const stus=SECTIONS_DATA[activeSection]||[];
+  const total=stus.length;
+  const present=stus.filter(s=>attendance[activeSection][activePeriod][s.reg]==='P').length;
+  const absent=stus.filter(s=>attendance[activeSection][activePeriod][s.reg]==='A').length;
+  const marked=present+absent;
+  const rate=marked>0?Math.round(present/marked*100):null;
+  document.getElementById('s-total').textContent=total;
+  document.getElementById('s-present').textContent=present;
+  document.getElementById('s-absent').textContent=absent;
+  document.getElementById('s-rate').textContent=rate!==null?rate+'%':'—';
+}
+
+// ─── ABSENT PANEL ────────────────────────────────────────
+function renderAbsentPanel(){
+  const absent=absentStudents();
+  const el=document.getElementById('absent-list');
+  if(!absent.length){
+    el.innerHTML=`<div class="empty-notice">✅ No absent students in this period</div>`;
+    return;
+  }
+  el.innerHTML=absent.map(s=>`
+    <div class="absent-card">
+      <div class="ac-info">
+        <div class="ac-name">${s.name.trim()}</div>
+        <div class="ac-reg">${s.reg} · ${activeSection}</div>
+      </div>
+      <div class="ac-actions">
+        <button class="icon-btn wa" title="WhatsApp" onclick="sendNotice(${JSON.stringify(s)},'wa')">📱</button>
+        <button class="icon-btn em" title="Email" onclick="sendNotice(${JSON.stringify(s)},'email')">✉</button>
+        <button class="icon-btn cp" title="Copy" onclick="sendNotice(${JSON.stringify(s)},'copy')">📋</button>
+      </div>
+    </div>`).join('');
+}
+
+// ─── SUMMARY ─────────────────────────────────────────────
+function renderSummary(){
+  const stus=SECTIONS_DATA[activeSection]||[];
+  document.getElementById('summ-body').innerHTML=PERIODS.map(p=>{
+    const present=stus.filter(s=>attendance[activeSection][p.id][s.reg]==='P').length;
+    const absent=stus.filter(s=>attendance[activeSection][p.id][s.reg]==='A').length;
+    const marked=present+absent;
+    const pct=marked>0?Math.round(present/marked*100):0;
+    const col=pct>=75?'var(--green)':pct>=50?'var(--amber)':'var(--red)';
+    return `<tr>
+      <td style="font-size:.8rem;font-family:var(--mono);color:${p.id===activePeriod?'var(--accent)':'var(--text)'}">${p.name}</td>
+      <td style="color:var(--green);font-weight:700">${present}</td>
+      <td style="color:var(--red);font-weight:700">${absent}</td>
+      <td><div class="bar-wrap">
+        <div class="mini-bar"><div class="mini-fill" style="width:${pct}%;background:${col}"></div></div>
+        <div class="pct" style="color:${col}">${marked>0?pct+'%':'—'}</div>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── RIGHT TAB ───────────────────────────────────────────
+function switchRTab(tab,el){
+  activeRTab=tab;
+  document.querySelectorAll('.rtab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.rtab')[tab==='absent'?0:1].classList.add('active');
+  document.getElementById('rtab-absent').style.display=tab==='absent'?'':'none';
+  document.getElementById('rtab-summary').style.display=tab==='summary'?'':'none';
+  if(tab==='summary')renderSummary();
+}
+
+// ─── EXPORT CSV ──────────────────────────────────────────
+function exportCSV(){
+  const stus=SECTIONS_DATA[activeSection]||[];
+  let csv=`Section,Sl.No,Register No,Name,${PERIODS.map(p=>p.name).join(',')}\n`;
+  stus.forEach(s=>{
+    const row=[activeSection,s.sl,s.reg,`"${s.name.trim()}"`,
+      ...PERIODS.map(p=>attendance[activeSection][p.id][s.reg]||'—')];
+    csv+=row.join(',')+'\n';
+  });
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`attendance_${activeSection.replace(/\s/g,'_')}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast('⬇ CSV downloaded for '+activeSection);
+}
+
+// ─── RENDER ALL ──────────────────────────────────────────
+function renderAll(){
+  renderStats();
+  renderSectionBar();
+  renderPeriodTabs();
+  renderStudentList();
+  renderAbsentPanel();
+  if(activeRTab==='summary')renderSummary();
+}
+
+// ─── INIT ────────────────────────────────────────────────
+updateAccess();
+renderAll();
+</script>
+</body>
+</html>
